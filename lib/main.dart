@@ -1,5 +1,6 @@
 import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -11,20 +12,21 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => MyAppState(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => MyAppState()),
+        BlocProvider(create: (_) => CounterCubit()),
+      ],
       child: MaterialApp(
-        title: 'Flutter Training',
+        title: 'Flutter App',
         theme: ThemeData(
           useMaterial3: true,
-          // 1. Updated color scheme with a more modern palette
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF6750A4), // Purple primary color
+            seedColor: const Color(0xFF6750A4),
             secondary: const Color(0xFF625B71),
             tertiary: const Color(0xFF7D5260),
             brightness: Brightness.light,
           ),
-          // Enhanced text theme
           textTheme: const TextTheme(
             displayMedium: TextStyle(
               fontSize: 32,
@@ -39,14 +41,12 @@ class MyApp extends StatelessWidget {
               letterSpacing: 0.5,
             ),
           ),
-          // Enhanced card theme
           cardTheme: CardTheme(
             elevation: 4,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
           ),
-          // Enhanced button theme
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -56,47 +56,15 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        home: MyHomePage(),
+        home: const MyHomePage(),
       ),
     );
   }
 }
 
-class MyAppState extends ChangeNotifier {
-  var current = WordPair.random();
-  var favorites = <WordPair>[];
-  // 3. Add history feature
-  var history = <WordPair>[];
-
-  void getNext() {
-    current = WordPair.random();
-    history.add(current); // Add to history when generating new word
-    notifyListeners();
-  }
-
-  void toggleFavorite() {
-    if (favorites.contains(current)) {
-      favorites.remove(current);
-    } else {
-      favorites.add(current);
-    }
-    notifyListeners();
-  }
-
-  // 5. Remove favorite word
-  void removeFavorite(WordPair pair) {
-    favorites.remove(pair);
-    notifyListeners();
-  }
-
-  // 6. Clear history
-  void clearHistory() {
-    history.clear();
-    notifyListeners();
-  }
-}
-
 class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key});
+
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
@@ -109,10 +77,12 @@ class _MyHomePageState extends State<MyHomePage> {
     Widget page;
     switch (selectedIndex) {
       case 0:
-        page = GeneratorPage();
+        page = const CounterPage();
       case 1:
+        page = const GeneratorPage();
+      case 2:
         page = FavoritesPage();
-      case 2: // 3. Add History page
+      case 3:
         page = HistoryPage();
       default:
         throw UnimplementedError('no widget for $selectedIndex');
@@ -128,9 +98,14 @@ class _MyHomePageState extends State<MyHomePage> {
         selectedIndex: selectedIndex,
         destinations: const [
           NavigationDestination(
+            selectedIcon: Icon(Icons.check_circle),
+            icon: Icon(Icons.check_circle_outline),
+            label: 'Counter',
+          ),
+          NavigationDestination(
             selectedIcon: Icon(Icons.home),
             icon: Icon(Icons.home_outlined),
-            label: 'Home',
+            label: 'Generator',
           ),
           NavigationDestination(
             selectedIcon: Icon(Icons.favorite),
@@ -151,6 +126,165 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
+// Counter App
+class CounterPage extends StatefulWidget {
+  const CounterPage({super.key});
+
+  @override
+  State<CounterPage> createState() => _CounterPageState();
+}
+
+class _CounterPageState extends State<CounterPage> {
+  late int _count;
+
+  @override
+  void initState() {
+    super.initState();
+    _count = 0;
+  }
+
+  void _showMultipleOfFiveSnackbar() {
+    if (_count % 5 == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.favorite, color: Colors.red),
+              const SizedBox(width: 8),
+              Text('You got $_count!'),
+              const SizedBox(width: 8),
+              const Icon(Icons.favorite, color: Colors.red),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<CounterCubit, int>(
+      builder: (context, count) {
+        _count = count;
+        return Container(
+          color: Theme.of(context).colorScheme.background,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Count: $_count',
+                  style: Theme.of(context).textTheme.displayMedium,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        context.read<CounterCubit>().increment();
+                        _showMultipleOfFiveSnackbar();
+                      },
+                      child: const Text('+1'), 
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () {
+                        context.read<CounterCubit>().decrement();
+                        _showMultipleOfFiveSnackbar();
+                      },
+                      child: const Text('-1'),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () {
+                        context.read<CounterCubit>().multiplyByTwo();
+                        _showMultipleOfFiveSnackbar();
+                      },
+                      child: const Text('x2'),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () {
+                        context.read<CounterCubit>().decrementByTwo();
+                        _showMultipleOfFiveSnackbar();
+                      },
+                      child: const Text('-2'),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () => context.read<CounterCubit>().reset(),
+                      child: const Text('Reset'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class CounterCubit extends Cubit<int> {
+  CounterCubit() : super(0);
+
+  void increment() {
+    emit(state + 1);
+  }
+
+  void decrement() {
+    emit(state - 1);
+  }
+
+  void multiplyByTwo() {
+    emit(state * 2);
+  }
+
+  void decrementByTwo() {
+    emit(state - 2);
+  }
+
+  void reset() {
+    emit(0);
+  }
+}
+
+// Wise Word App
+class MyAppState extends ChangeNotifier {
+  var current = WordPair.random();
+  var favorites = <WordPair>[];
+  var history = <WordPair>[];
+
+  void getNext() {
+    current = WordPair.random();
+    history.add(current);
+    notifyListeners();
+  }
+
+  void toggleFavorite() {
+    if (favorites.contains(current)) {
+      favorites.remove(current);
+    } else {
+      favorites.add(current);
+    }
+    notifyListeners();
+  }
+
+  void removeFavorite(WordPair pair) {
+    favorites.remove(pair);
+    notifyListeners();
+  }
+
+  void clearHistory() {
+    history.clear();
+    notifyListeners();
+  }
+}
+
 class GeneratorPage extends StatelessWidget {
   const GeneratorPage({super.key});
 
@@ -167,7 +301,7 @@ class GeneratorPage extends StatelessWidget {
     }
 
     return Container(
-      color: Theme.of(context).colorScheme.background,
+      color: Theme.of(context).colorScheme.surface,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -253,7 +387,6 @@ class FavoritesPage extends StatelessWidget {
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ),
-              // 2. Show snackbar on tap
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -262,7 +395,6 @@ class FavoritesPage extends StatelessWidget {
                   ),
                 );
               },
-              // 5. Remove favorite on long press
               onLongPress: () {
                 appState.removeFavorite(pair);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -280,14 +412,13 @@ class FavoritesPage extends StatelessWidget {
   }
 }
 
-// 3. New History Page
 class HistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
 
     return Container(
-      color: Theme.of(context).colorScheme.background,
+      color: Theme.of(context).colorScheme.surface,
       child: Column(
         children: [
           Padding(
@@ -299,7 +430,6 @@ class HistoryPage extends StatelessWidget {
                   'History (${appState.history.length} words)',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                // 6. Clear history button
                 ElevatedButton.icon(
                   onPressed: appState.history.isEmpty
                       ? null
@@ -330,7 +460,6 @@ class HistoryPage extends StatelessWidget {
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  // 4. Show snackbar on tap
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
