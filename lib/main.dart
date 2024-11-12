@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => MyAppState(),
       child: MaterialApp(
-        title: 'Namer App',
+        title: 'Flutter Training',
         theme: ThemeData(
           useMaterial3: true,
           // 1. Updated color scheme with a more modern palette
@@ -235,7 +235,7 @@ class FavoritesPage extends StatelessWidget {
     var appState = context.watch<MyAppState>();
 
     return Container(
-      color: Theme.of(context).colorScheme.background,
+      color: Theme.of(context).colorScheme.surface,
       child: ListView(
         children: [
           Padding(
